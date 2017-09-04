@@ -16,6 +16,20 @@ namespace :build do
   task :converter do
     build_converter
   end
+
+  desc 'Compile Slim templates and generate converter.rb for Opal'
+  task 'converter:opal' do
+    build_converter :opal
+  end
+
+  desc 'Transcompile to JavaScript and generate dist/asciidoctor-html5s.js'
+  task :js => 'converter:opal' do
+    require 'opal'
+
+    mkdir_p 'dist'
+    Opal.append_path 'lib'
+    File.binwrite 'dist/asciidoctor-html5s.js', Opal::Builder.build('asciidoctor-html5s').to_s
+  end
 end
 
 task :build => 'build:converter'
@@ -23,6 +37,8 @@ task :build => 'build:converter'
 task :clean do
   rm_rf CONVERTER_FILE
   rm_rf Dir['*.gem']
+  rm_rf Dir['asciidoctor-html5s-*.tgz']
+  rm_rf Dir['dist/*.js']
   rm_rf Dir['pkg/*.gem']
 end
 
@@ -60,6 +76,12 @@ def build_converter(mode = :pretty)
   require 'asciidoctor-templates-compiler'
   require 'slim-htag'
 
+  generator = if mode == :opal
+    Temple::Generators::ArrayBuffer.new(freeze_static: false)
+  else
+    Temple::Generators::StringBuffer
+  end
+
   File.open(CONVERTER_FILE, 'w') do |file|
     puts "Generating #{file.path} (mode: #{mode})."
 
@@ -71,6 +93,9 @@ def build_converter(mode = :pretty)
         basebackend: 'html',
         outfilesuffix: '.html',
         filetype: 'html',
+      },
+      engine_opts: {
+        generator: generator,
       },
       pretty: (mode == :pretty),
       output: file

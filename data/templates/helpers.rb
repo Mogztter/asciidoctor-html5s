@@ -1,4 +1,3 @@
-require 'asciidoctor'
 require 'asciidoctor/html5s'
 require 'date'
 require 'json'
